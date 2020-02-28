@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Amazon.AspNetCore.Identity.Cognito;
 using Amazon.Extensions.CognitoAuthentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -39,8 +40,9 @@ namespace WebAvert.Web.Controllers
                     ModelState.AddModelError("UserExists", "User with this email already exxists");
                     return View(model);
                 }
-                
-                var createdUser = await _userManager.CreateAsync(user, model.Password);
+
+                //user.Attributes.Add(CognitoAttribute.Name.AttributeName, model.Email);
+                var createdUser = await _userManager.CreateAsync(user, model.Password).ConfigureAwait(false);
                 if (createdUser.Succeeded)
                 {
                     RedirectToAction("Confirm");
@@ -48,6 +50,40 @@ namespace WebAvert.Web.Controllers
 
             }
             return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Confirm(ConfirmModel model)
+        {
+            return View(model);
+        }
+        
+        [HttpPost]
+        [ActionName("Confirm")]
+        public async Task<IActionResult> Confirm_Post(ConfirmModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(model.Email).ConfigureAwait(false);
+                if (User == null)
+                {
+                    ModelState.AddModelError("not found", "user emailwa s not found");
+                }
+
+                var result = await (_userManager as CognitoUserManager<CognitoUser>).ConfirmSignUpAsync(user, model.Code, true).ConfigureAwait(false);
+                if (result.Succeeded)
+                {
+                    return RedirectToAction("Index", "Home");
+                }
+                else
+                {
+                    foreach(var item in result.Errors)
+                    {
+                        ModelState.AddModelError(item.Code, item.Description);
+                    }
+                }
+            }
+            return View(model);
         }
     }
 }
