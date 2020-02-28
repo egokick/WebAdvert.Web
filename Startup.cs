@@ -37,6 +37,10 @@ namespace WebAvert.Web
             //    };
             //}
             );
+            services.ConfigureApplicationCookie(options =>
+            {
+                options.LoginPath = "/Accounts/Login";
+            });
             services.AddControllersWithViews();
         }
 
